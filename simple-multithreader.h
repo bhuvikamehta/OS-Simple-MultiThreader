@@ -41,6 +41,7 @@ void* parallel_for_thread2(void* arg) {
     pthread_exit(NULL);
 }
 
+// Modified thread creation to use numThreads-1
 template <typename Lambda>
 long long parallel_for_helper(int numThreads, Lambda&& lambda, void* (*thread_func)(void*), ThreadArgs** args_array) {
     struct timeval start_time, end_time;
@@ -48,18 +49,25 @@ long long parallel_for_helper(int numThreads, Lambda&& lambda, void* (*thread_fu
     
     pthread_t threads[MAX_THREADS];
     
-    for (int i = 0; i < numThreads; ++i) {
+    // Create numThreads-1 threads
+    for (int i = 0; i < numThreads-1; ++i) {
         pthread_create(&threads[i], NULL, thread_func, args_array[i]);
     }
     
-    for (int i = 0; i < numThreads; ++i) {
+    // Main thread processes its chunk
+    ThreadArgs* main_args = args_array[numThreads-1];
+    for (int i = main_args->start; i < main_args->end; ++i) {
+        main_args->lambda1(i);
+    }
+    
+    // Wait for other threads
+    for (int i = 0; i < numThreads-1; ++i) {
         pthread_join(threads[i], NULL);
     }
     
     gettimeofday(&end_time, NULL);
     long long exec_time = (end_time.tv_sec - start_time.tv_sec) * 1000000LL + end_time.tv_usec - start_time.tv_usec;
     printf("Execution time: %lld microseconds\n", exec_time);
-    fflush(stdout);
     
     return exec_time;
 }
