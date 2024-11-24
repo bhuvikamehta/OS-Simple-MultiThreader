@@ -61,12 +61,16 @@ long long parallel_for_helper(int numThreads, Lambda&& lambda, void* (*thread_fu
     gettimeofday(&end_time, NULL);
     long long exec_time = (end_time.tv_sec - start_time.tv_sec) * 1000000LL + end_time.tv_usec - start_time.tv_usec;
     printf("Execution time: %lld microseconds\n", exec_time);
+    fflush(stdout);  // Force output to be displayed
     
     return exec_time;
 }
 
 template <typename Lambda>
 long long parallel_for(int low, int high, Lambda&& lambda, int numThreads) {
+    // Ensure numThreads is within bounds
+    numThreads = std::min(std::max(numThreads, 1), MAX_THREADS);
+    
     ThreadArgs** args_array = new ThreadArgs*[numThreads];
     int chunkSize = (high - low + numThreads - 1) / numThreads;
     
@@ -87,6 +91,8 @@ long long parallel_for(int low, int high, Lambda&& lambda, int numThreads) {
 
 template <typename Lambda>
 long long parallel_for(int low1, int high1, int low2, int high2, Lambda&& lambda, int numThreads) {
+    numThreads = std::min(std::max(numThreads, 1), MAX_THREADS);
+    
     ThreadArgs** args_array = new ThreadArgs*[numThreads];
     int chunkSize1 = (high1 - low1 + numThreads - 1) / numThreads;
     
@@ -107,21 +113,24 @@ long long parallel_for(int low1, int high1, int low2, int high2, Lambda&& lambda
     return result;
 }
 
+// Forward declaration of user's main
 int user_main(int argc, char** argv);
 
+// Actual main function
 int main(int argc, char** argv) {
-    // First run user's main which will show its execution time
+    setbuf(stdout, NULL);  // Disable output buffering
+    
+    // Run the user's main function
     int rc = user_main(argc, argv);
     
-    // Execute the final parallel_for as shown in example output
+    // Get number of threads from command line
     int numThreads = argc > 1 ? atoi(argv[1]) : 4;
     
-    auto lambda2 = [](int i) {
-        // Empty lambda for final timing
-    };
-    
-    long long time1 = parallel_for(0, 100, lambda2, numThreads);
+    // Final parallel_for call
+    auto finalLambda = [](int i) {};
+    long long time1 = parallel_for(0, 100, finalLambda, numThreads);
     printf("Total execution time for parallel_for call 1: %lld microseconds\n", time1);
+    fflush(stdout);
     
     return rc;
 }
