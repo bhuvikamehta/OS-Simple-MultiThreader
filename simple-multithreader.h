@@ -135,30 +135,28 @@ int main(int argc, char** argv) {
     int numThreads = atoi(argv[1]);  
     int vectorSize = atoi(argv[2]);
     
-    // Validate inputs
-    if (numThreads <= 0 || numThreads > MAX_THREADS) {
-        printf("Number of threads must be between 1 and %d\n", MAX_THREADS);
-        return 1;
-    }
+    printf("Starting parallel execution with %d threads for size %d\n", numThreads, vectorSize);
     
-    if (vectorSize <= 0) {
-        printf("Vector size must be positive\n");
-        return 1;
-    }
-
-    int rc = user_main(argc, argv);
-
-    // Modified lambda with actual work and output
-    auto lambda2 = [](int i) {
-        printf("Processing element %d\n", i);
-        // Add any computation you want to perform here
+    // Define a lambda that actually does something visible
+    auto workFunction = [](int i) {
+        printf("Thread processing element %d\n", i);
+        // Simulate some work
+        for(int j = 0; j < 1000; j++) {
+            // Some dummy computation to make the work visible
+            volatile int x = j * i;
+        }
     };
 
-    printf("Starting parallel execution with %d threads for size %d\n", numThreads, vectorSize);
-    long long time1 = parallel_for(0, vectorSize, lambda2, numThreads);
-    printf("Total execution time for parallel_for call 1: %lld microseconds\n", time1);
+    printf("Beginning parallel execution...\n");
+    fflush(stdout);  // Force output to be displayed
+    
+    long long time1 = parallel_for(0, vectorSize, workFunction, numThreads);
+    
+    printf("Parallel execution completed!\n");
+    printf("Total execution time: %lld microseconds\n", time1);
+    fflush(stdout);
 
-    return rc;
+    return 0;
 }
 
 
