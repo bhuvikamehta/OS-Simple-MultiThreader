@@ -127,19 +127,40 @@ int user_main(int argc, char** argv);
 
 // Main function 
 int main(int argc, char** argv) {
-    int numThreads = 4;  
+    if (argc != 3) {
+        printf("Usage: %s <numThreads> <vectorSize>\n", argv[0]);
+        return 1;
+    }
+
+    int numThreads = atoi(argv[1]);  
+    int vectorSize = atoi(argv[2]);
+    
+    // Validate inputs
+    if (numThreads <= 0 || numThreads > MAX_THREADS) {
+        printf("Number of threads must be between 1 and %d\n", MAX_THREADS);
+        return 1;
+    }
+    
+    if (vectorSize <= 0) {
+        printf("Vector size must be positive\n");
+        return 1;
+    }
+
     int rc = user_main(argc, argv);
 
-    auto lambda2 = [](int) {
-        //printf("====== Hope you enjoyed CSE231(A) ======\n");
+    // Modified lambda with actual work and output
+    auto lambda2 = [](int i) {
+        printf("Processing element %d\n", i);
+        // Add any computation you want to perform here
     };
 
-    long long time1 = parallel_for(0, 100, lambda2, numThreads);
-    //printing execution time
+    printf("Starting parallel execution with %d threads for size %d\n", numThreads, vectorSize);
+    long long time1 = parallel_for(0, vectorSize, lambda2, numThreads);
     printf("Total execution time for parallel_for call 1: %lld microseconds\n", time1);
 
     return rc;
 }
+
 
 #define main user_main
 #endif
