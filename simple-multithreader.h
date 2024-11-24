@@ -26,7 +26,6 @@ void* parallel_for_thread1(void* arg) {
     for (int i = args->start; i < args->end; ++i) {
         args->lambda1(i);
     }
-    free(args);
     pthread_exit(NULL);
 }
 
@@ -37,7 +36,6 @@ void* parallel_for_thread2(void* arg) {
             args->lambda2(i, j);
         }
     }
-    free(args);
     pthread_exit(NULL);
 }
 
@@ -47,12 +45,31 @@ long long parallel_for_helper(int numThreads, Lambda&& lambda, void* (*thread_fu
     gettimeofday(&start_time, NULL);
     
     pthread_t threads[MAX_THREADS];
+    const int worker_threads = numThreads - 1;  // Create one less thread as main thread participates
     
-    for (int i = 0; i < numThreads; ++i) {
+    // Create worker threads
+    for (int i = 0; i < worker_threads; ++i) {
         pthread_create(&threads[i], NULL, thread_func, args_array[i]);
     }
     
-    for (int i = 0; i < numThreads; ++i) {
+    // Main thread processes its chunk
+    if (worker_threads < numThreads) {  // Ensure there's work for main thread
+        ThreadArgs* main_args = args_array[worker_threads];
+        if (main_args->lambda2) {  // 2D case
+            for (int i = main_args->start; i < main_args->end; ++i) {
+                for (int j = main_args->low2; j < main_args->high2; ++j) {
+                    main_args->lambda2(i, j);
+                }
+            }
+        } else {  // 1D case
+            for (int i = main_args->start; i < main_args->end; ++i) {
+                main_args->lambda1(i);
+            }
+        }
+    }
+    
+    // Wait for worker threads to complete
+    for (int i = 0; i < worker_threads; ++i) {
         pthread_join(threads[i], NULL);
     }
     
@@ -76,11 +93,15 @@ long long parallel_for(int low, int high, Lambda&& lambda, int numThreads) {
         args_array[i]->end = i == numThreads - 1 ? high : args_array[i]->start + chunkSize;
         args_array[i]->numThreads = numThreads;
         args_array[i]->lambda1 = lambda;
+        args_array[i]->lambda2 = nullptr;  // Ensure lambda2 is null for 1D case
     }
     
     long long result = parallel_for_helper(numThreads, std::forward<Lambda>(lambda), 
                                          parallel_for_thread1, args_array);
     
+    for (int i = 0; i < numThreads; ++i) {
+        free(args_array[i]);
+    }
     delete[] args_array;
     return result;
 }
@@ -88,7 +109,6 @@ long long parallel_for(int low, int high, Lambda&& lambda, int numThreads) {
 template <typename Lambda>
 long long parallel_for(int low1, int high1, int low2, int high2, Lambda&& lambda, int numThreads) {
     numThreads = std::min(std::max(numThreads, 1), MAX_THREADS);
-    
     ThreadArgs** args_array = new ThreadArgs*[numThreads];
     int chunkSize1 = (high1 - low1 + numThreads - 1) / numThreads;
     
@@ -99,15 +119,20 @@ long long parallel_for(int low1, int high1, int low2, int high2, Lambda&& lambda
         args_array[i]->low2 = low2;
         args_array[i]->high2 = high2;
         args_array[i]->numThreads = numThreads;
+        args_array[i]->lambda1 = nullptr;  // Ensure lambda1 is null for 2D case
         args_array[i]->lambda2 = std::forward<Lambda>(lambda);
     }
     
     long long result = parallel_for_helper(numThreads, std::forward<Lambda>(lambda), 
                                          parallel_for_thread2, args_array);
     
+    for (int i = 0; i < numThreads; ++i) {
+        free(args_array[i]);
+    }
     delete[] args_array;
     return result;
 }
+
 // Forward declaration of user's main
 int user_main(int argc, char** argv);
 
