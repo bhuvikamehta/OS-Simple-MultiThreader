@@ -48,29 +48,25 @@ long long parallel_for_helper(int numThreads, Lambda&& lambda, void* (*thread_fu
     
     pthread_t threads[MAX_THREADS];
     
-    for (int i = 0; i < numThreads - 1; ++i) {
+    for (int i = 0; i < numThreads; ++i) {
         pthread_create(&threads[i], NULL, thread_func, args_array[i]);
     }
     
-    thread_func(args_array[numThreads - 1]);
-    
-    for (int i = 0; i < numThreads - 1; ++i) {
+    for (int i = 0; i < numThreads; ++i) {
         pthread_join(threads[i], NULL);
     }
     
     gettimeofday(&end_time, NULL);
     long long exec_time = (end_time.tv_sec - start_time.tv_sec) * 1000000LL + end_time.tv_usec - start_time.tv_usec;
     printf("Execution time: %lld microseconds\n", exec_time);
-    fflush(stdout);  // Force output to be displayed
+    fflush(stdout);
     
     return exec_time;
 }
 
 template <typename Lambda>
 long long parallel_for(int low, int high, Lambda&& lambda, int numThreads) {
-    // Ensure numThreads is within bounds
     numThreads = std::min(std::max(numThreads, 1), MAX_THREADS);
-    
     ThreadArgs** args_array = new ThreadArgs*[numThreads];
     int chunkSize = (high - low + numThreads - 1) / numThreads;
     
@@ -112,7 +108,6 @@ long long parallel_for(int low1, int high1, int low2, int high2, Lambda&& lambda
     delete[] args_array;
     return result;
 }
-
 // Forward declaration of user's main
 int user_main(int argc, char** argv);
 
