@@ -10,64 +10,64 @@
 #include <functional>
 #include <iostream>
 
-#define MAX_THREADS 64
+#define MAX_PARALLEL_THREADS 64 
 
 typedef struct {
-    int start;
-    int end;
-    int low2;
-    int high2;
-    int numThreads;
+    int startIndex;
+    int endIndex;
+    int startIndex2D;
+    int endIndex2D;
+    int totalThreads;
     std::function<void(int)> lambda1;
     std::function<void(int, int)> lambda2;
-} ThreadArgs; //data required by the threads 
+} ThreadArgs; //structure to pass args to threads 
 
-void* parallel_for_thread1(void* arg) {
+void* execute_paralleltask_1D(void* arg) {
     ThreadArgs* args = static_cast<ThreadArgs*>(arg);
-    for (int i = args->start; i < args->end; ++i) {
-        args->lambda1(i); //for single dimensional loops 
+    for (int i = args->startIndex; i < args->endIndex; ++i) {
+        args->lambda1(i); //for 1d loops
     }
     pthread_exit(NULL);
 }
 
-void* parallel_for_thread2(void* arg) {
+void* execute_paralleltask_2D(void* arg) {
     ThreadArgs* args = static_cast<ThreadArgs*>(arg);
-    for (int i = args->start; i < args->end; ++i) {
-        for (int j = args->low2; j < args->high2; ++j) {
-            args->lambda2(i, j); //for nested loops
+    for (int i = args->startIndex; i < args->endIndex; ++i) {
+        for (int j = args->startIndex2D; j < args->endIndex2D; ++j) {
+            args->lambda2(i, j); //for 2d loops
         }
     }
     pthread_exit(NULL);
 }
 
 template <typename Lambda>
-long long parallel_for_helper(int numThreads, Lambda&& lambda, void* (*thread_func)(void*), ThreadArgs** args_array) {
+long long execute_parallel_for(int totalThreads, Lambda&& lambda, void* (*thread_func)(void*), ThreadArgs** args_array) {
     struct timeval start_time, end_time;
     gettimeofday(&start_time, NULL);
 
-    pthread_t threads[MAX_THREADS];
-    const int worker_threads = numThreads - 1;  
+    pthread_t threads[MAX_PARALLEL_THREADS];
+    const int worker_threads = totalThreads - 1;  //-1 because of main thread
 
     for (int i = 0; i < worker_threads; ++i) {
-        pthread_create(&threads[i], NULL, thread_func, args_array[i]); //thread creations
+        pthread_create(&threads[i], NULL, thread_func, args_array[i]); //create thread
     }
- 
-    if (worker_threads < numThreads) {  
+
+    if (worker_threads < totalThreads) {  
         ThreadArgs* main_args = args_array[worker_threads];
-        if (main_args->lambda2) {  
-            for (int i = main_args->start; i < main_args->end; ++i) { //nested loops
-                for (int j = main_args->low2; j < main_args->high2; ++j) {
+        if (main_args->lambda2) {  // for 2d loops
+            for (int i = main_args->startIndex; i < main_args->endIndex; ++i) {
+                for (int j = main_args->startIndex2D; j < main_args->endIndex2D; ++j) {
                     main_args->lambda2(i, j);
                 }
             }
-        } else { 
-            for (int i = main_args->start; i < main_args->end; ++i) { //signle dimenstional 
+        } else {  // for 1d loops
+            for (int i = main_args->startIndex; i < main_args->endIndex; ++i) {
                 main_args->lambda1(i);
             }
         }
     }
 
-    for (int i = 0; i < worker_threads; ++i) { //waiting for threads
+    for (int i = 0; i < worker_threads; ++i) { //waiting for worker threads
         pthread_join(threads[i], NULL);
     }
 
@@ -80,51 +80,51 @@ long long parallel_for_helper(int numThreads, Lambda&& lambda, void* (*thread_fu
 }
 
 template <typename Lambda>
-long long parallel_for(int low, int high, Lambda&& lambda, int numThreads) {
-    numThreads = std::min(std::max(numThreads, 1), MAX_THREADS);
-    ThreadArgs** args_array = new ThreadArgs*[numThreads];
-    int chunkSize = (high - low + numThreads - 1) / numThreads;
+long long parallel_for(int low, int high, Lambda&& lambda, int totalThreads) {
+    totalThreads = std::min(std::max(totalThreads, 1), MAX_PARALLEL_THREADS);
+    ThreadArgs** args_array = new ThreadArgs*[totalThreads];
+    int chunkSize = (high - low + totalThreads - 1) / totalThreads;
 
-    for (int i = 0; i < numThreads; ++i) {
+    for (int i = 0; i < totalThreads; ++i) {
         args_array[i] = static_cast<ThreadArgs*>(malloc(sizeof(ThreadArgs)));
-        args_array[i]->start = low + i * chunkSize;
-        args_array[i]->end = i == numThreads - 1 ? high : args_array[i]->start + chunkSize;
-        args_array[i]->numThreads = numThreads;
+        args_array[i]->startIndex = low + i * chunkSize;
+        args_array[i]->endIndex = i == totalThreads - 1 ? high : args_array[i]->startIndex + chunkSize;
+        args_array[i]->totalThreads = totalThreads;
         args_array[i]->lambda1 = lambda;
-        args_array[i]->lambda2 = nullptr;  // lambda2 is null for single dimenstional case
+        args_array[i]->lambda2 = nullptr;  // coz lamba2 is null for 1d case
     }
 
-    long long result = parallel_for_helper(numThreads, std::forward<Lambda>(lambda), 
-                                         parallel_for_thread1, args_array);
+    long long result = execute_parallel_for(totalThreads, std::forward<Lambda>(lambda), 
+                                         execute_paralleltask_1D, args_array);
 
-    for (int i = 0; i < numThreads; ++i) {
-        free(args_array[i]); //memory cleanup 
+    for (int i = 0; i < totalThreads; ++i) {
+        free(args_array[i]); 
     }
     delete[] args_array;
     return result;
 }
 
 template <typename Lambda>
-long long parallel_for(int low1, int high1, int low2, int high2, Lambda&& lambda, int numThreads) {
-    numThreads = std::min(std::max(numThreads, 1), MAX_THREADS);
-    ThreadArgs** args_array = new ThreadArgs*[numThreads];
-    int chunkSize1 = (high1 - low1 + numThreads - 1) / numThreads;
+long long parallel_for(int low1, int high1, int startIndex2D, int endIndex2D, Lambda&& lambda, int totalThreads) {
+    totalThreads = std::min(std::max(totalThreads, 1), MAX_PARALLEL_THREADS);
+    ThreadArgs** args_array = new ThreadArgs*[totalThreads];
+    int chunkSize1 = (high1 - low1 + totalThreads - 1) / totalThreads;
 
-    for (int i = 0; i < numThreads; ++i) {
+    for (int i = 0; i < totalThreads; ++i) {
         args_array[i] = static_cast<ThreadArgs*>(malloc(sizeof(ThreadArgs)));
-        args_array[i]->start = low1 + i * chunkSize1;
-        args_array[i]->end = i == numThreads - 1 ? high1 : args_array[i]->start + chunkSize1;
-        args_array[i]->low2 = low2;
-        args_array[i]->high2 = high2;
-        args_array[i]->numThreads = numThreads;
-        args_array[i]->lambda1 = nullptr;  //  lambda1 is null for 2d
+        args_array[i]->startIndex = low1 + i * chunkSize1;
+        args_array[i]->endIndex = i == totalThreads - 1 ? high1 : args_array[i]->startIndex + chunkSize1;
+        args_array[i]->startIndex2D = startIndex2D;
+        args_array[i]->endIndex2D = endIndex2D;
+        args_array[i]->totalThreads = totalThreads;
+        args_array[i]->lambda1 = nullptr;  //coz lambda1 is null for 2d case
         args_array[i]->lambda2 = std::forward<Lambda>(lambda);
     }
 
-    long long result = parallel_for_helper(numThreads, std::forward<Lambda>(lambda), 
-                                         parallel_for_thread2, args_array);
+    long long result = execute_parallel_for(totalThreads, std::forward<Lambda>(lambda), 
+                                         execute_paralleltask_2D, args_array);
 
-    for (int i = 0; i < numThreads; ++i) {
+    for (int i = 0; i < totalThreads; ++i) {
         free(args_array[i]);
     }
     delete[] args_array;
@@ -137,8 +137,9 @@ void demonstration(std::function<void()> &&lambda) {
 
 int user_main(int argc, char** argv);
 
+
 int main(int argc, char** argv) {
-    setbuf(stdout, NULL); 
+    setbuf(stdout, NULL);  
 
     // demonstration of lambda usage
     int x = 5, y = 1;
