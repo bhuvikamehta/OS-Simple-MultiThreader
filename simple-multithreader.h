@@ -20,12 +20,12 @@ typedef struct {
     int numThreads;
     std::function<void(int)> lambda1;
     std::function<void(int, int)> lambda2;
-} ThreadArgs;
+} ThreadArgs; //data required by the threads 
 
 void* parallel_for_thread1(void* arg) {
     ThreadArgs* args = static_cast<ThreadArgs*>(arg);
     for (int i = args->start; i < args->end; ++i) {
-        args->lambda1(i);
+        args->lambda1(i); //for single dimensional loops 
     }
     pthread_exit(NULL);
 }
@@ -34,7 +34,7 @@ void* parallel_for_thread2(void* arg) {
     ThreadArgs* args = static_cast<ThreadArgs*>(arg);
     for (int i = args->start; i < args->end; ++i) {
         for (int j = args->low2; j < args->high2; ++j) {
-            args->lambda2(i, j);
+            args->lambda2(i, j); //for nested loops
         }
     }
     pthread_exit(NULL);
@@ -46,11 +46,10 @@ long long parallel_for_helper(int numThreads, Lambda&& lambda, void* (*thread_fu
     gettimeofday(&start_time, NULL);
 
     pthread_t threads[MAX_THREADS];
-    const int worker_threads = numThreads - 1;  // Create one less thread as main thread participates
+    const int worker_threads = numThreads - 1;  
 
-    // Create worker threads
     for (int i = 0; i < worker_threads; ++i) {
-        pthread_create(&threads[i], NULL, thread_func, args_array[i]);
+        pthread_create(&threads[i], NULL, thread_func, args_array[i]); //thread creations
     }
 
     // Main thread processes its chunk
