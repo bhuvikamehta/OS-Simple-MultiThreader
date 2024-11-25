@@ -16,7 +16,7 @@ This is a C++ header-only file which simplifies parallelizing loops using thread
 Provides two functions for handling parallel workloads;
 One for single-dimensional loops and One for nested loops 
 
-execute_time_parallel_for function includes creating threads : pthread_create(), distributing the task for them and waiting for all threads to finish pthread_join() and managing execution time
+execution_time_parallel_for function includes creating threads : pthread_create(), distributing the task for them and waiting for all threads to finish pthread_join() and managing execution time
 
 Demonstration function executes a given lambda function.  
 
