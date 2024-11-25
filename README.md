@@ -7,7 +7,7 @@ Pragya Singh (pragya23379@iiitd.ac.in)
 
 Contribution: Both contributed equally and were present at all times. The task was distributed equally within both members.
 
-##Implementations:
+Implementations:
 This is a C++ header-only file which simplifies parallelizing loops using threads.
 Provides two functions for handling parallel workloads;
 One for single-dimensional loops and One for nested loops 
