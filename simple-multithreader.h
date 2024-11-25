@@ -22,14 +22,6 @@ typedef struct {
     std::function<void(int, int)> lambda2;
 } ThreadArgs; //structure to pass args to threads 
 
-void* execute_paralleltask_1D(void* arg) {
-    ThreadArgs* args = static_cast<ThreadArgs*>(arg);
-    for (int i = args->startIndex; i < args->endIndex; ++i) {
-        args->lambda1(i); //for 1d loops
-    }
-    pthread_exit(NULL);
-}
-
 void* execute_paralleltask_2D(void* arg) {
     ThreadArgs* args = static_cast<ThreadArgs*>(arg);
     for (int i = args->startIndex; i < args->endIndex; ++i) {
@@ -40,8 +32,16 @@ void* execute_paralleltask_2D(void* arg) {
     pthread_exit(NULL);
 }
 
+void* execute_paralleltask_1D(void* arg) {
+    ThreadArgs* args = static_cast<ThreadArgs*>(arg);
+    for (int i = args->startIndex; i < args->endIndex; ++i) {
+        args->lambda1(i); //for 1d loops
+    }
+    pthread_exit(NULL);
+}
+
 template <typename Lambda>
-long long execute_parallel_for(int totalThreads, Lambda&& lambda, void* (*thread_func)(void*), ThreadArgs** args_array) {
+long long execution_time_parallel_for(int totalThreads, Lambda&& lambda, void* (*thread_func)(void*), ThreadArgs** args_array) {
     struct timeval start_time, end_time;
     gettimeofday(&start_time, NULL);
 
@@ -94,7 +94,7 @@ long long parallel_for(int low, int high, Lambda&& lambda, int totalThreads) {
         args_array[i]->lambda2 = nullptr;  // coz lamba2 is null for 1d case
     }
 
-    long long result = execute_parallel_for(totalThreads, std::forward<Lambda>(lambda), 
+    long long result = execution_time_parallel_for(totalThreads, std::forward<Lambda>(lambda), 
                                          execute_paralleltask_1D, args_array);
 
     for (int i = 0; i < totalThreads; ++i) {
@@ -121,7 +121,7 @@ long long parallel_for(int low1, int high1, int startIndex2D, int endIndex2D, La
         args_array[i]->lambda2 = std::forward<Lambda>(lambda);
     }
 
-    long long result = execute_parallel_for(totalThreads, std::forward<Lambda>(lambda), 
+    long long result = execution_time_parallel_for(totalThreads, std::forward<Lambda>(lambda), 
                                          execute_paralleltask_2D, args_array);
 
     for (int i = 0; i < totalThreads; ++i) {
