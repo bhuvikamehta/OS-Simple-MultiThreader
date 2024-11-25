@@ -2,7 +2,7 @@ EXE=vector matrix
 
 all: clean $(EXE)
 
-%: %.cpp
+%: %.cpp simple-multithreader.h
 	g++ -O3 -std=c++11 -o $@ $^ -lpthread
 
 clean:
