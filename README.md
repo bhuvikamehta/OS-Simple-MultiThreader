@@ -5,6 +5,7 @@ Group ID- 58
 Group Members:
 
 Bhuvika Mehta (bhuvika23172@iiitd.ac.in)
+
 Pragya Singh (pragya23379@iiitd.ac.in)
 
 Contribution: Both contributed equally and were present at all times. The task was distributed equally within both members.
@@ -22,5 +23,7 @@ Demonstration function executes a given lambda function.  
 Working:
 
 make
+
 ./vector (number of threads) (task size)
+
 ./matrix (number of threads) (task size)
